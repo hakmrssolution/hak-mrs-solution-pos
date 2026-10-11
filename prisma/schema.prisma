@@ -1,0 +1,266 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Business {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  phone     String?
+  email     String?
+  logo      String?
+
+  currency      String  @default("Rs.")
+  receiptFooter String  @default("Thank You!")
+  showLogo      Boolean @default(true)
+  showPhone     Boolean @default(true)
+  showEmail     Boolean @default(true)
+  showAddress   Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+    users      User[]
+  products   Product[]
+  categories Category[]
+  customers  Customer[]
+  suppliers  Supplier[]
+  sales      Sale[]
+  purchases  Purchase[]
+  expenses   Expense[]
+  payments Payment[]
+  license    License?
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  email     String   @unique
+  password  String
+  role      String   @default("ADMIN")
+  createdAt DateTime @default(now())
+
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  products Product[]
+}
+
+model Product {
+  id        String   @id @default(cuid())
+  name      String
+  sku       String?
+  barcode   String?
+  price     Float
+  costPrice Float
+  stock     Int      @default(0)
+  minStock  Int      @default(5)
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
+
+  saleItems      SaleItem[]
+  purchaseItems  PurchaseItem[]
+  stockMovements StockMovement[]
+}
+
+model StockMovement {
+  id        String   @id @default(cuid())
+  type      String
+  quantity  Int
+  reason    String?
+  createdAt DateTime @default(now())
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  address   String?
+  balance   Float    @default(0)
+  createdAt DateTime @default(now())
+
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  sales Sale[]
+}
+
+model Sale {
+  id        String   @id @default(cuid())
+  subtotal  Float
+  discount  Float    @default(0)
+  total     Float
+
+  paymentMethod      String   @default("CASH")
+  paidAmount         Float    @default(0)
+  dueAmount          Float    @default(0)
+
+  // Payment Details
+  bankName           String?
+  transactionReference String?
+  cardType           String?
+  cardLast4          String?
+  mobileNumber       String?
+
+  createdAt DateTime @default(now())
+
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  items SaleItem[]
+}
+model SaleItem {
+  id       String @id @default(cuid())
+  quantity Int
+  price    Float
+  total    Float
+
+  saleId String
+  sale   Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+model Supplier {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  address   String?
+  balance   Float    @default(0)
+  createdAt DateTime @default(now())
+
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  purchases Purchase[]
+}
+
+model Purchase {
+  id         String   @id @default(cuid())
+  invoiceNo  String?
+  subtotal   Float
+  discount   Float    @default(0)
+  tax        Float    @default(0)
+  total      Float
+  paidAmount Float    @default(0)
+  createdAt  DateTime @default(now())
+
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+
+  supplierId String?
+  supplier   Supplier? @relation(fields: [supplierId], references: [id])
+
+  items PurchaseItem[]
+}
+
+model PurchaseItem {
+  id        String @id @default(cuid())
+  quantity  Int
+  costPrice Float
+
+  purchaseId String
+  purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+}
+model Expense {
+  id          String   @id @default(cuid())
+  title       String
+  amount      Float
+  category    String?
+  description String?
+  createdAt   DateTime @default(now())
+
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+}
+model License {
+  id                 String   @id @default(cuid())
+  licenseKey         String   @unique
+  type               String   @default("TRIAL")
+  status             String   @default("ACTIVE")
+  activatedAt        DateTime?
+  expiresAt          DateTime?
+
+  trialUsed          Boolean  @default(false)
+
+ installationId String?
+  deviceFingerprint  String?
+  lastIp             String?
+  lastVerifiedAt     DateTime?
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  businessId         String   @unique
+  business            Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  payments            Payment[]
+  activations         LicenseActivation[]
+}
+
+model Payment {
+  id               String   @id @default(cuid())
+  amount           Float
+  plan             String
+  status           String   @default("PENDING")
+
+  gateway          String?
+  transactionId    String?  @unique
+  paymentReference String?
+
+  paidAt           DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  businessId       String
+  business         Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  licenseId        String?
+  license          License? @relation(fields: [licenseId], references: [id])
+}
+
+model LicenseActivation {
+  id                 String   @id @default(cuid())
+
+  installationId     String
+  deviceFingerprint  String?
+  ipAddress          String?
+
+  activatedAt        DateTime @default(now())
+  lastSeenAt         DateTime @default(now())
+
+  licenseId          String
+  license            License @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+
+  @@unique([licenseId, installationId])
+}
